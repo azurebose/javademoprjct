@@ -15,10 +15,28 @@ pipeline {
              sh 'mvn clean install'
             }
         }
-        stage('deploy to tomcat') {
+        stage('Build Docker Image') {
             steps {
-             deploy adapters: [tomcat8(credentialsId: 'admin', path: '', url: 'http://44.211.226.43:8080')], contextPath: 'smaple-webapplication', war: '**/*.war'
+                sh '''
+              docker build . --tag web-application:$BUILD_NUMBER
+              docker tag web-application:$BUILD_NUMBER  474648476402.dkr.ecr.us-east-1.amazonaws.com/web-application:$BUILD_NUMBER
+                
+                '''
+                
             }
-        }
+        }  
+      
+      stage('Push Docker Image') {
+          steps{
+ withAWS(credentials: 'AWS', region: 'us-east-1') {
+       
+                    sh '''
+                  aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 474648476402.dkr.ecr.us-east-1.amazonaws.com
+                  docker push 474648476402.dkr.ecr.us-east-1.amazonaws.com/web-application:$BUILD_NUMBER
+                    '''
+                }
+            } 
+            
+      }
     }
 }
